@@ -1,0 +1,159 @@
+# Install necessary libraries
+!pip install pymongo
+
+from pymongo import MongoClient
+
+# Connect to MongoDB
+client = MongoClient('mongodb://localhost:27017/')
+db = client['asl_db']
+collection = db['asl_videos']
+
+# Example function to insert video metadata
+def insert_video_metadata(video_path, label, signer_id, duration):
+    video_data = {
+        'video_path': video_path,
+        'label': label,  # ASL sign (word/letter)
+        'signer_id': signer_id,
+        'duration': duration  # Video duration in seconds
+    }
+    collection.insert_one(video_data)
+    print(f"Inserted video metadata: {video_data}")
+
+# Example insert
+insert_video_metadata('path/to/video.mp4', 'hello', 'signer1', 3.2)
+
+# Fetch video metadata
+def fetch_video_data(label=None):
+    if label:
+        video_data = collection.find_one({'label': label})
+    else:
+        video_data = collection.find()
+    return video_data
+
+# Fetch all videos labeled as "hello"
+videos = fetch_video_data('hello')
+for video in videos:
+    print(video)
+
+
+==========================================
+
+import cv2
+import mediapipe as mp
+
+# Initialize MediaPipe Hands
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands()
+mp_drawing = mp.solutions.drawing_utils
+
+# Extract frames from video
+def extract_frames(video_path):
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+    cap.release()
+    return frames
+
+# Detect keypoints (hand landmarks) from frames
+def extract_keypoints(frames):
+    keypoints = []
+    for frame in frames:
+        # Convert frame to RGB
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = hands.process(rgb_frame)
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                # Extract keypoints for each hand
+                keypoints.append([(lm.x, lm.y, lm.z) for lm in hand_landmarks.landmark])
+    return keypoints
+
+# Example: Extract keypoints from a video
+video_frames = extract_frames('path/to/video.mp4')
+keypoints = extract_keypoints(video_frames)
+print(keypoints)
+
+
+==========================================
+
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+# Define the CNN + LSTM model
+def build_model():
+    model = models.Sequential()
+    
+    # CNN layers for spatial feature extraction
+    model.add(layers.Conv2D(64, (3, 3), activation='relu', input_shape=(64, 64, 3)))
+    model.add(layers.MaxPooling2D((2, 2)))
+    model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((2, 2)))
+    
+    # Flatten the CNN output
+    model.add(layers.Flatten())
+    
+    # LSTM layer for temporal feature extraction
+    model.add(layers.RepeatVector(30))  # 30 time steps for example
+    model.add(layers.LSTM(64, return_sequences=True))
+    
+    # Fully connected layer
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(10, activation='softmax'))  # Adjust output for number of classes
+    
+    # Compile the model
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    
+    return model
+
+# Build and print the model summary
+asl_model = build_model()
+asl_model.summary()
+
+# Example training process
+# X_train: Preprocessed frames or keypoints
+# y_train: Labels (ASL signs)
+
+asl_model.fit(X_train, y_train, epochs=10, batch_size=32)
+
+
+======================================
+
+import cv2
+import numpy as np
+
+def real_time_recognition():
+    cap = cv2.VideoCapture(0)  # 0 for webcam
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Preprocess the frame (resize, keypoints extraction, etc.)
+        processed_frame = preprocess_frame_for_model(frame)
+
+        # Run inference on the model
+        prediction = asl_model.predict(np.expand_dims(processed_frame, axis=0))
+
+        # Display the prediction (convert class index to ASL sign)
+        asl_sign = decode_prediction(prediction)
+        cv2.putText(frame, asl_sign, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
+        # Show the frame with prediction
+        cv2.imshow('ASL Recognition', frame)
+
+        # Break loop on 'q' key press
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# Start real-time recognition
+real_time_recognition()
+
+
