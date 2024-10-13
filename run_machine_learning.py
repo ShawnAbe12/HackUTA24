@@ -56,22 +56,20 @@ while True:
         prediction = model.predict([np.asarray(data_aux)])
         predicted_character = label_dict[int(prediction[0])]
 
-        if (predicted_character != temp):
-             word =  word + predicted_character
-             temp = predicted_character
-        if (len(word) > 20):
-            word = "restart"
-            apple = apple +1
+        # if (predicted_character != temp):
+        #      word =  word + predicted_character
+        #      temp = predicted_character
+        # if (len(word) > 20):
+        #     word = "restart"
+        #     apple = apple +1
         cv2.rectangle(frame,(x1,y1),(x2,y2),(0,0,0),4)
         cv2.putText(frame, predicted_character, (x1, y1 -10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3,
                     cv2.LINE_AA)
-        cv2.putText(frame, word, (x1+50, y1+50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3,
-                    cv2.LINE_AA)
-        if (apple <= 5 and apple >0):# increase apple count to make restart stay on screen longer and stop the appending of strings
-            apple +=1
-        if(apple >=5):
-            word = " "
-            apple = 0 
+        # if (apple <= 5 and apple >0):# increase apple count to make restart stay on screen longer and stop the appending of strings
+        #     apple +=1
+        # if(apple >=5):
+        #     word = " "
+        #     apple = 0 
 
     cv2.imshow('frame',frame)
     cv2.waitKey(25)
